@@ -1,0 +1,17 @@
+# Ignore big and runtime stuff
+data/
+logs/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.swp
+
+# IDE junk
+.vscode/
+.idea/
+.DS_Store
+
+# Python virtualenv
+venv/
+.env
