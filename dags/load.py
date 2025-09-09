@@ -1,4 +1,5 @@
 import os, glob, csv, io, zipfile, psycopg2
+from datetime import datetime
 
 # >>> Adjust these as needed
 DATA_DIR = "/opt/airflow/data/citibike"
@@ -41,10 +42,27 @@ HEADER_MAP = {
     "end_lat": "end_station_latitude",
     "end_lng": "end_station_longitude",
     "member_casual": "usertype",
-    "rideable_type": None,   # ignore
+    "rideable_type": None,   #
+
+
+    # NEW SCHEMA 2025
+    "ride_id": None,         # new unique trip ID
+    "rideable_type": None,   # e.g. "classic_bike", "
+    "started_at": "starttime",
+    "ended_at": "stoptime",
+    "start_station_name": "start_station_name",
+    "start_station_id": "start_station_id",
+    "end_station_name": "end_station_name",
+    "end_station_id": "end_station_id",
+    "start_lat": "start_station_latitude",
+    "start_lng": "start_station_longitude",
+    "end_lat": "end_station_latitude",
+    "end_lng": "end_station_longitude",
+    "member_casual": "usertype",
 }
 
 NULL_TOKENS = {"", "NULL", "null", "\\N", "N/A", "na"}
+
 
 def normalize_value(raw_value: str) -> str:
     if raw_value is None:
@@ -60,6 +78,30 @@ def normalize_station_id(raw_value: str) -> str:
         return str(int(float(s)))  # "72.0" -> "72"
     except ValueError:
         return ""
+
+def parse_ts_to_iso(raw_value: str) -> str:
+    s = (s or "").strip().replace("T", " ")
+    if not s:
+        return ""
+    try:
+        dt = datetime.fromisoformat(s)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return ""
+
+def derive_trip_duration(clean_row: dict) -> None:
+    if clean_row.get("tripduration"):
+        return
+    st = parse_ts_to_iso(clean_row.get("starttime"))
+    en = parse_ts_to_iso(clean_row.get("stoptime"))
+    if st and en:
+        dt_st= datetime.strptime(st, "%Y-%m-%d %H:%M:%S")
+        dt_en= datetime.strptime(en, "%Y-%m-%d %H:%M:%S")
+        if dt_en > dt_st:
+            clean_row["tripduration"] = str(int((dt_en - dt_st).total_seconds()))
+        else:
+            clean_row["tripduration"] = ""
+
 
 def normalize_usertype(raw_value: str) -> str:
     s = normalize_value(raw_value).lower()
@@ -81,6 +123,8 @@ def normalize_row(raw_row_dict: dict) -> dict:
             clean[mapped_column] = normalize_station_id(raw_val)
         elif mapped_column == "usertype":
             clean[mapped_column] = normalize_usertype(raw_val)
+        elif mapped_column in ("starttime", "stoptime"):
+            clean[mapped_column] = parse_ts_to_iso(raw_val)
         else:
             clean[mapped_column] = normalize_value(raw_val)
     return clean

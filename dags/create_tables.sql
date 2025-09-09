@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS public.stg_citibike (
     usertype TEXT,
     birth_year INT CHECK (birth_year IS NULL OR birth_year BETWEEN 1900 AND EXTRACT(YEAR FROM now())::INT),
     gender INT CHECK (gender IS NULL OR gender IN (0,1,2))  -- matches CitiBike legacy
+    ride_id TEXT,
+    rideable_type TEXT,
+
 );
 
 -- Dimension: stations
