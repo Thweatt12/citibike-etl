@@ -17,9 +17,9 @@ CREATE TABLE IF NOT EXISTS public.stg_citibike (
     bikeid BIGINT,
     usertype TEXT,
     birth_year INT CHECK (birth_year IS NULL OR birth_year BETWEEN 1900 AND EXTRACT(YEAR FROM now())::INT),
-    gender INT CHECK (gender IS NULL OR gender IN (0,1,2))  -- matches CitiBike legacy
+    gender INT CHECK (gender IS NULL OR gender IN (0,1,2)) ,  -- matches CitiBike legacy
     ride_id TEXT,
-    rideable_type TEXT,
+    rideable_type TEXT
 
 );
 
@@ -50,3 +50,4 @@ CREATE INDEX IF NOT EXISTS idx_stg_end_station_id   ON public.stg_citibike (end_
 
 CREATE INDEX IF NOT EXISTS idx_fact_trip_date       ON public.fact_daily_station_trips (trip_date);
 CREATE INDEX IF NOT EXISTS idx_fact_station         ON public.fact_daily_station_trips (station_id);
+ 

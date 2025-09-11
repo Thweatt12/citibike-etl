@@ -30,6 +30,14 @@ SET station_name = COALESCE(EXCLUDED.station_name, public.dim_station.station_na
     lat          = COALESCE(EXCLUDED.lat,          public.dim_station.lat),
     lon          = COALESCE(EXCLUDED.lon,          public.dim_station.lon);
 
+
+
+DROP TABLE IF EXISTS public.stg_citibike_2025;
+CREATE TABLE public.stg_citibike_2025 AS
+SELECT * FROM public.stg_citibike
+WHERE starttime >= '2025-01-01' AND starttime < '2026-01-01';
+
+
 -- ===== FACT DAILY STATION TRIPS =====
 TRUNCATE public.fact_daily_station_trips;
 

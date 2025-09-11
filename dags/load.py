@@ -2,22 +2,25 @@ import os, glob, csv, io, zipfile, psycopg2
 from datetime import datetime
 
 # >>> Adjust these as needed
-DATA_DIR = "/opt/airflow/data/citibike"
+DATA_DIR = "data/citibike"
 
-PG = dict(host="postgres", port=5432, dbname="Ctit_Data", user="airflow", password="airflow")  # keep your DB name
+
+PG = dict(host="localhost", port=5432, dbname="Ctit_Data", user="airflow", password="airflow")  # keep your DB name
 
 DB_COLUMNS = [
-    "tripduration","starttime","stoptime",
-    "start_station_id","start_station_name",
-    "start_station_latitude","start_station_longitude",
-    "end_station_id","end_station_name",
-    "end_station_latitude","end_station_longitude",
-    "bikeid","usertype","birth_year","gender"
+    "tripduration", "starttime", "stoptime",
+    "start_station_id", "start_station_name",
+    "start_station_latitude", "start_station_longitude",
+    "end_station_id", "end_station_name",
+    "end_station_latitude", "end_station_longitude",
+    "bikeid", "usertype", "birth_year", "gender",
+    "ride_id", "rideable_type"
 ]
+
 
 # Maps various header spellings to our DB column names; use None to ignore extra columns
 HEADER_MAP = {
-    # legacy schema
+    # Legacy schema
     "tripduration": "tripduration",
     "starttime": "starttime", "start time": "starttime",
     "stoptime": "stoptime", "stop time": "stoptime",
@@ -34,34 +37,25 @@ HEADER_MAP = {
     "birth year": "birth_year",
     "gender": "gender",
 
-    # newer schema
+    # New 2025 schema
+    "ride_id": "ride_id",
+    "rideable_type": "rideable_type",
     "started_at": "starttime",
     "ended_at": "stoptime",
-    "start_lat": "start_station_latitude",
-    "start_lng": "start_station_longitude",
-    "end_lat": "end_station_latitude",
-    "end_lng": "end_station_longitude",
-    "member_casual": "usertype",
-    "rideable_type": None,   #
-
-
-    # NEW SCHEMA 2025
-    "ride_id": None,         # new unique trip ID
-    "rideable_type": None,   # e.g. "classic_bike", "
-    "started_at": "starttime",
-    "ended_at": "stoptime",
-    "start_station_name": "start_station_name",
     "start_station_id": "start_station_id",
-    "end_station_name": "end_station_name",
-    "end_station_id": "end_station_id",
+    "start_station_name": "start_station_name",
     "start_lat": "start_station_latitude",
     "start_lng": "start_station_longitude",
+    "end_station_id": "end_station_id",
+    "end_station_name": "end_station_name",
     "end_lat": "end_station_latitude",
     "end_lng": "end_station_longitude",
-    "member_casual": "usertype",
+    "member_casual": "usertype"
 }
 
 NULL_TOKENS = {"", "NULL", "null", "\\N", "N/A", "na"}
+
+
 
 
 def normalize_value(raw_value: str) -> str:
@@ -75,19 +69,53 @@ def normalize_station_id(raw_value: str) -> str:
     if s == "":
         return ""
     try:
-        return str(int(float(s)))  # "72.0" -> "72"
+        return str(int(float(s)))  # handles both "123.0" and "123"
     except ValueError:
         return ""
 
+def normalize_int(raw_value: str) -> str:
+    s = normalize_value(raw_value)
+    if s == "":
+        return ""
+    try:
+        return str(int(float(s)))  # handles both "1983.0" and "1983"
+    except ValueError:
+        return ""
+
+
 def parse_ts_to_iso(raw_value: str) -> str:
-    s = (s or "").strip().replace("T", " ")
+    s = (raw_value or "").strip().replace("T", " ").replace("Z", "")
     if not s:
         return ""
     try:
         dt = datetime.fromisoformat(s)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception:
+    except Exception as e:
+        print(f"[!] Bad timestamp: '{raw_value}' — {e}")
         return ""
+
+def process_reader(conn, reader, source_name):
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=DB_COLUMNS)
+    writer.writeheader()
+    rows = 0
+    found_2025 = 0
+
+    for raw in reader:
+        clean = normalize_row(raw)
+
+        # Print any row with a 2025 starttime
+        if "2025" in clean.get("starttime", ""):
+            found_2025 += 1
+            print(f"[+] 2025 row: {clean}")
+
+        writer.writerow(clean)
+        rows += 1
+
+    print(f"({source_name}) {rows} total rows, {found_2025} with 2025 starttime.")
+    copy_buffer(conn, buf, rows, source_name)
+
+
 
 def derive_trip_duration(clean_row: dict) -> None:
     if clean_row.get("tripduration"):
@@ -119,15 +147,24 @@ def normalize_row(raw_row_dict: dict) -> dict:
         mapped_column = HEADER_MAP.get(raw_key)
         if mapped_column is None:
             continue  # ignore extras
+
         if mapped_column in ("start_station_id", "end_station_id"):
             clean[mapped_column] = normalize_station_id(raw_val)
+
+        elif mapped_column in ("birth_year", "gender", "bikeid"):
+            clean[mapped_column] = normalize_int(raw_val)
+
         elif mapped_column == "usertype":
             clean[mapped_column] = normalize_usertype(raw_val)
+
         elif mapped_column in ("starttime", "stoptime"):
             clean[mapped_column] = parse_ts_to_iso(raw_val)
+
         else:
             clean[mapped_column] = normalize_value(raw_val)
+
     return clean
+
 
 def connect():
     return psycopg2.connect(**PG)
@@ -197,10 +234,14 @@ def copy_csvs(conn, paths):
             continue
 
 def main():
-    # find both CSVs and ZIP archives
     csvs = glob.glob(os.path.join(DATA_DIR, "**", "*.csv"), recursive=True)
     zips = glob.glob(os.path.join(DATA_DIR, "**", "*.zip"), recursive=True)
     paths = sorted(csvs + zips)
+
+    print(f"[INFO] Found {len(paths)} files to load:")
+    for path in paths:
+        print(f" - {path}")
+
     if not paths:
         print("No CSVs or ZIPs found.")
         return
