@@ -2,6 +2,16 @@ CitiBike ETL Pipeline
 
 This project builds a complete ETL pipeline for CitiBike NYC trip data, using modern data engineering tools like Apache Airflow, Docker, and PostgreSQL. The pipeline follows the Bronze → Silver → Gold layered data architecture for scalable and maintainable data workflows.
 
+
+## Use Case
+
+The CitiBike dataset was chosen due to its complexity and real-world relevance since im in NY area. It provides an opportunity to work with:
+- Time-series data
+- Geographic data (station locations)
+- Public APIs and periodic data drops
+
+The pipeline can be extended for analytics, dashboards, or predictive models, such as forecasting demand or trip duration.
+
 ---
 
 Project Structure
