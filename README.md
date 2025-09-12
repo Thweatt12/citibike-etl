@@ -63,5 +63,5 @@ Each step corresponds to a layer in the pipeline:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/citibike-etl.git
+   git clone https://github.com/Thweatt12/citibike-etl.git
    cd citibike-etl
