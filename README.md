@@ -65,3 +65,7 @@ Each step corresponds to a layer in the pipeline:
    ```bash
    git clone https://github.com/Thweatt12/citibike-etl.git
    cd citibike-etl
+
+2. Start The Service:
+   docker-compose up --build
+
