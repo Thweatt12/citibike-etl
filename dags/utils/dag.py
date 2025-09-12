@@ -21,23 +21,23 @@ with DAG(
 
     create_tables = BashOperator(
         task_id="create_tables",
-        bash_command="python -u /opt/airflow/dags/run_sql.py /opt/airflow/dags/create_tables.sql",
+        bash_command="python -u /opt/airflow/dags/run_sql.py /opt/airflow/dags/bronze/create_tables.sql",
     )
 
     unzip = BashOperator(
         task_id="unzip_files",
-        bash_command="python -u /opt/airflow/dags/unzip.py",
+        bash_command="python -u /opt/airflow/dags/bronze/unzip.py",
     )
 
     load = BashOperator(
-        task_id="load_csvs",
-        bash_command="python -u /opt/airflow/dags/load.py",
+        task_id="normalize_load_csvs",
+        bash_command="python -u /opt/airflow/dags/silver/normalize_load.py",
     )
 
     build_dims_facts = BashOperator(
         task_id="build_dims_facts",
-        bash_command="python -u /opt/airflow/dags/run_sql.py /opt/airflow/dags/build_dims_facts.sql",
+        bash_command="python -u /opt/airflow/dags/run_sql.py /opt/airflow/dags/gold/build_dims_facts.sql",
     )
 
     # DAG order
-    create_tables >> unzip >> load >> build_dims_facts
+    unzip >> create_tables >> load >> build_dims_facts
