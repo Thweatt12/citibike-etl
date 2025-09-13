@@ -14,6 +14,19 @@ The pipeline can be extended for analytics, dashboards, or predictive models, su
 
 ---
 
+## Visualizations
+
+A sample analytical dashboard was created from the final Gold layer data using Power BI.  
+It includes:
+
+- Station pair popularity
+- Trip duration by hour
+- Usage breakdown by user type
+- Monthly trip volume in 2025
+
+[View Dashboard (PDF)](./assets/citibike_dashboard.pdf)
+
+
 Project Structure
 citibike-etl/
 ├── dags/
