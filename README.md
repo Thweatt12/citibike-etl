@@ -27,22 +27,6 @@ It includes:
 [View Dashboard (PDF)](./assets/citibike_dashboard.pdf)
 
 
-Project Structure
-citibike-etl/
-├── dags/
-│ ├── bronze/
-│ │ ├── unzip.py # Extract and unzip raw files
-│ │ └── create_tables.sql # Create raw staging tables
-│ ├── silver/
-│ │ └── normalize_load.py # Normalize and clean raw data
-│ ├── gold/
-│ │ └── build_dims_facts.sql # Build final fact/dimension tables
-│ ├── utils/
-│ │ └── run_sql.py # Helper script to run SQL files
-├── docker-compose.yaml # Docker services config (Airflow, DB, etc.)
-├── Dockerfile # Airflow image
-├── .gitignore
-└── README.md # This file
 
 
 ---
